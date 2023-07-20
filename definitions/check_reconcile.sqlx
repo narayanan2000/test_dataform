@@ -1,0 +1,18 @@
+config {
+    type:"operations",
+    dependencies:["reconcile_view"]
+}
+
+with difference as (
+  select
+    (SELECT `COUNT` FROM ${ref("reconcile_view")} WHERE TABLE_NAME = "CAPA_RAW") - 
+    (SELECT `COUNT` FROM ${ref("reconcile_view")} WHERE TABLE_NAME = "CAPA_DENORMALISED") AS diff
+)
+-- Raise exception if the difference is not equal to 0
+select
+  *,
+  case when diff = 0 then
+  (ERROR("Count mismstch")) 
+  end
+from
+  difference

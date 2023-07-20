@@ -1,0 +1,14 @@
+config {
+    type: "operations",
+}
+INSERT INTO `globus-bq-stage.dataform_test.TIMESTAMP_LOGS_TEST` (
+TABLE_NAME,
+RAW_TABLE_START_TIME,
+RAW_TABLE_END_TIME,
+CURRENT_TIME,
+TRIGGER_NAME) VALUES (
+    "CAPA", 
+    (SELECT MAX(`RAW_TABLE_END_TIME`) FROM `globus-bq-stage.dataform_test.TIMESTAMP_LOGS_TEST` WHERE TABLE_NAME = "CAPA"),
+    UNIX_MILLIS(CURRENT_TIMESTAMP()),
+    UNIX_MILLIS(CURRENT_TIMESTAMP()),
+    "update_time_capa")

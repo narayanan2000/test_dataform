@@ -1,0 +1,61 @@
+config {
+  type: "view",
+  dependencies:["update_time"]
+}
+
+WITH Timestamps AS (
+  SELECT
+    *
+    FROM (
+    SELECT `RAW_TABLE_START_TIME` AS start_time, `RAW_TABLE_END_TIME` AS end_time,
+        ROW_NUMBER() OVER(ORDER BY `RAW_TABLE_END_TIME` DESC) as row_num
+    FROM
+        `globus-bq-stage.dataform_test.TIMESTAMP_LOGS_TEST`
+        where TABLE_NAME="CAPA"
+    )
+    WHERE row_num=1
+)
+SELECT
+  s.c3150_capa_id AS capa_key_id,
+  s.c3150_capa_id AS capa_id,
+  s.c901_type AS capa_type_id,
+  globus_util.GET_CODE_NAME(s.c901_type) AS capa_type,
+  s.c3150_ncmr_com_ref AS ncmr_references,
+  globus_util.GET_USER_NAME(s.c101_issued_by) AS issued_by,
+  globus_util.GET_USER_NAME(s.c101_requested_by) AS requested_by,
+  s.c3150_project_ref AS c3150_project_ref,
+  s.c901_status AS status_id,
+  globus_util.GET_CODE_NAME(s.c901_status) AS status,
+  s.c3150_capa_ref AS capa_reference,
+  s.c3150_lot_number AS lot_number,
+  s.c3150_catagory AS capa_category,
+  s.c3150_capa_desc AS capa_description,
+  s.c3150_previous_capa AS previous_capa,
+  s.c3150_submitted_dt AS submitted_date,
+  s.c3150_response_dt AS response_date,
+  s.c901_priority_level AS priority_level_id,
+  globus_util.GET_CODE_NAME(s.c901_priority_level) AS priority_level,
+  s.c3150_close_dt AS close_date,
+  s.c3150_response AS response,
+  s.c3150_void_fl AS void_flag,
+  globus_util.GET_USER_NAME(s.c3150_created_by) AS created_by,
+  s.c3150_created_date AS created_date,
+  globus_util.GET_USER_NAME(s.c3150_last_updated_by) AS last_updated_by,
+  s.c3150_last_updated_date AS last_updated_date,
+  CASE c901_status
+    WHEN '102770' THEN globus_util.GET_WORK_DAYS_COUNT(DATE(s.c3150_submitted_dt), DATE(s.c3150_last_updated_date), '')
+    WHEN '102771' THEN globus_util.GET_WORK_DAYS_COUNT(DATE(s.c3150_submitted_dt), DATE(s.c3150_close_dt), '')
+    ELSE 0
+  END AS daystoclose,
+  CASE c901_status
+    WHEN '102769' THEN globus_util.GET_WORK_DAYS_COUNT(DATE(s.c3150_submitted_dt), DATE(CURRENT_DATE()), '')
+    WHEN '102770' THEN globus_util.GET_WORK_DAYS_COUNT(DATE(s.c3150_submitted_dt), DATE(s.c3150_last_updated_date), '')
+    WHEN '102771' THEN globus_util.GET_WORK_DAYS_COUNT(DATE(s.c3150_submitted_dt), DATE(s.c3150_close_dt), '')
+    ELSE 0
+  END AS aging,
+  s.datastream_metadata.source_timestamp AS ingestion_time
+FROM `globus-bq-stage.dataform_test.RAW_CAPA` AS s
+WHERE
+  -- filtering data on the basis of last modification time
+  s.datastream_metadata.source_timestamp >= (SELECT IF ((SELECT start_time from Timestamps) IS NULL, 1, (SELECT start_time from Timestamps)))
+  AND s.datastream_metadata.source_timestamp < (SELECT end_time from Timestamps)

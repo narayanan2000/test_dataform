@@ -1,0 +1,13 @@
+config {
+    type:"operations",
+    dependencies:["denorm_capa"]
+}
+UPDATE `globus-bq-stage.dataform_test.DENORM_CAPA_TEST`
+SET IS_DELETED = TRUE
+WHERE capa_key_id IN (
+  SELECT t.capa_key_id
+  FROM `globus-bq-stage.dataform_test.DENORM_CAPA_TEST` AS t
+  LEFT JOIN `globus-bq-stage.dataform_test.RAW_CAPA` AS s
+  ON t.capa_key_id = s.c3150_capa_id
+  WHERE s.c3150_capa_id IS NULL 
+);

@@ -1,0 +1,48 @@
+config {
+    type:"view",
+    dependencies:["delete_cdc_data"]
+}
+
+WITH Timestamps AS (
+  SELECT
+    *
+    FROM (
+    SELECT `RAW_TABLE_START_TIME` AS start_time, `RAW_TABLE_END_TIME` AS end_time,
+        ROW_NUMBER() OVER(ORDER BY `RAW_TABLE_END_TIME` DESC) as row_num
+    FROM
+        `globus-bq-stage.dataform_test.TIMESTAMP_LOGS_TEST`
+        where TABLE_NAME="CAPA"
+    )
+    WHERE row_num=1
+)
+SELECT "CAPA_RAW" AS TABLE_NAME, COUNT(1) AS COUNT
+FROM `globus-bq-stage.dataform_test.RAW_CAPA` AS C_RAW
+WHERE C_RAW.datastream_metadata.source_timestamp >= (SELECT IF ((SELECT start_time from Timestamps) IS NULL, 1, (SELECT start_time from Timestamps)))
+  AND C_RAW.datastream_metadata.source_timestamp < (SELECT end_time from Timestamps)
+
+UNION ALL
+
+--  Getting the number of rows in raw table for code lookup
+ SELECT "CODE_LOOKUP" AS TABLE_NAME, COUNT(1) AS COUNT
+FROM `globus-bq-stage.Globus_POC_RAW.GLOBUS_APP_T901_CODE_LOOKUP` AS C_LOOKUP
+WHERE C_LOOKUP.datastream_metadata.source_timestamp >= (SELECT IF ((SELECT start_time from Timestamps) IS NULL, 1, (SELECT start_time from Timestamps)))
+  AND C_LOOKUP.datastream_metadata.source_timestamp < (SELECT end_time from Timestamps)
+
+
+UNION ALL
+
+--  Getting the number of rows in raw table for the date dim table
+ SELECT "DATE_DIM" AS TABLE_NAME, COUNT(1) AS COUNT
+FROM `globus-bq-stage.Globus_POC_RAW.GLOBUS_BI_REALTIME_DATE_DIM` AS D_DIM
+WHERE D_DIM.datastream_metadata.source_timestamp >= (SELECT IF ((SELECT start_time from Timestamps) IS NULL, 1, (SELECT start_time from Timestamps)))
+  AND D_DIM.datastream_metadata.source_timestamp < (SELECT end_time from Timestamps)
+
+
+UNION ALL
+
+--  Getting the number of rows in Denormalized table for capa
+SELECT "CAPA_DENORMALISED" AS TABLE_NAME, COUNT(1) AS COUNT
+FROM `globus-bq-stage.dataform_test.DENORM_CAPA_TEST` AS C_DENORMALISED
+WHERE C_DENORMALISED.latest_ingestion_time >= (SELECT IF ((SELECT start_time from Timestamps) IS NULL, 1, (SELECT start_time from Timestamps)))
+  AND C_DENORMALISED.latest_ingestion_time < (SELECT end_time from Timestamps)
+  AND C_DENORMALISED.IS_DELETED = FALSE

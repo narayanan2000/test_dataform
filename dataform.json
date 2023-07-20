@@ -1,0 +1,8 @@
+{
+  "defaultSchema": "dataform_test",
+  "assertionSchema": "dataform_assertions",
+  "warehouse": "bigquery",
+  "defaultDatabase": "globus-bq-stage",
+  "defaultLocation": "US"
+}
+    
