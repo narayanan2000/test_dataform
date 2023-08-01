@@ -11,7 +11,7 @@ with difference as (
 -- Raise exception if the difference is not equal to 0
 select
   *,
-  case when diff = 0 then
+  case when diff != 0 then
   (ERROR("Count mismstch")) 
   end
 from
